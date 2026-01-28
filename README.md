@@ -52,3 +52,8 @@ Configuration lives in `config/sources.yaml` and `config/keywords.yaml`.
 - Pricing/docs collectors fetch HTML, archive to `data/snapshots/`, and log snapshots to the DB.
 - Reddit collector scans configured subreddits (last 24h, keyword-filtered) and stores `CommunitySignal` rows with sentiment.
 - GitHub collector scans configured repos' issues updated in the last 24h (skips PRs), keyword-filters, and stores `CommunitySignal` rows.
+
+### How the original four files fit
+- `ai_sub_monitor_prd.md` drives the feature list; collectors/reporting map to F1–F7.
+- `ai_subscription_background.md` holds the baseline economics and hypotheses that inform what we monitor; keep it updated as facts change.
+- `subscriber_mix_model.xlsx` and `subscription_economics.xlsx` are treated as canonical models. The `ai-sub-monitor init` command copies them into `data/models/` for safekeeping; future scripts (F7) will write updates back to those copies.
