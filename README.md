@@ -52,6 +52,7 @@ Configuration lives in `config/sources.yaml` and `config/keywords.yaml`.
 - Pricing/docs collectors fetch HTML, archive to `data/snapshots/`, and log snapshots to the DB.
 - Reddit collector scans configured subreddits (last 24h, keyword-filtered) and stores `CommunitySignal` rows with sentiment.
 - GitHub collector scans configured repos' issues updated in the last 24h (skips PRs), keyword-filters, and stores `CommunitySignal` rows.
+- Pricing/docs collectors skip writes when content hashes match the latest snapshot; when changed they flag `is_change=True` for reporting.
 
 ### How the original four files fit
 - `ai_sub_monitor_prd.md` drives the feature list; collectors/reporting map to F1–F7.

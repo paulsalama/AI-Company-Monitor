@@ -6,7 +6,17 @@ from datetime import date, datetime
 from pathlib import Path
 from typing import Any, Dict, Generator, Optional
 
-from sqlalchemy import JSON, Date, DateTime, DECIMAL, ForeignKey, String, create_engine, text
+from sqlalchemy import (
+    JSON,
+    Boolean,
+    Date,
+    DateTime,
+    DECIMAL,
+    ForeignKey,
+    String,
+    create_engine,
+    text,
+)
 from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column, relationship
 
 from .config import default_db_path, ensure_data_dirs
@@ -30,19 +40,36 @@ class Company(Base):
 
 
 class PricingSnapshot(Base):
-  __tablename__ = "pricing_snapshots"
+    __tablename__ = "pricing_snapshots"
 
-  id: Mapped[str] = mapped_column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
-  company_id: Mapped[str] = mapped_column(String, ForeignKey("companies.id"), index=True)
-  captured_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
-  tier_name: Mapped[str] = mapped_column(String)
-  price_monthly: Mapped[float | None] = mapped_column(DECIMAL(10, 2), nullable=True)
-  price_annual: Mapped[float | None] = mapped_column(DECIMAL(10, 2), nullable=True)
-  features: Mapped[Dict[str, Any] | None] = mapped_column(JSON, nullable=True)
-  rate_limits_stated: Mapped[Dict[str, Any] | None] = mapped_column(JSON, nullable=True)
-  raw_html: Mapped[str | None] = mapped_column(String, nullable=True)
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    company_id: Mapped[str] = mapped_column(String, ForeignKey("companies.id"), index=True)
+    url: Mapped[str | None] = mapped_column(String, nullable=True)
+    captured_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
+    content_hash: Mapped[str | None] = mapped_column(String, nullable=True)
+    tier_name: Mapped[str] = mapped_column(String)
+    price_monthly: Mapped[float | None] = mapped_column(DECIMAL(10, 2), nullable=True)
+    price_annual: Mapped[float | None] = mapped_column(DECIMAL(10, 2), nullable=True)
+    features: Mapped[Dict[str, Any] | None] = mapped_column(JSON, nullable=True)
+    rate_limits_stated: Mapped[Dict[str, Any] | None] = mapped_column(JSON, nullable=True)
+    raw_html: Mapped[str | None] = mapped_column(String, nullable=True)
+    is_change: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
 
-  company: Mapped[Company] = relationship(back_populates="pricing_snapshots")
+    company: Mapped[Company] = relationship(back_populates="pricing_snapshots")
+
+
+class DocumentationSnapshot(Base):
+    __tablename__ = "documentation_snapshots"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    company_id: Mapped[str] = mapped_column(String, ForeignKey("companies.id"), index=True)
+    url: Mapped[str | None] = mapped_column(String, nullable=True)
+    captured_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
+    content_hash: Mapped[str | None] = mapped_column(String, nullable=True)
+    raw_html: Mapped[str | None] = mapped_column(String, nullable=True)
+    is_change: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+
+    company: Mapped[Company] = relationship()
 
 
 class RateLimitChange(Base):
@@ -111,16 +138,39 @@ class WeeklyReport(Base):
 
 
 def get_engine(db_path: Path | None = None):
-  db_path = db_path or default_db_path()
-  ensure_data_dirs()
-  url = f"sqlite:///{db_path}"
-  return create_engine(url, echo=False, future=True)
+    db_path = db_path or default_db_path()
+    ensure_data_dirs()
+    url = f"sqlite:///{db_path}"
+    return create_engine(url, echo=False, future=True)
 
 
 def init_db(db_path: Path | None = None):
-  engine = get_engine(db_path)
-  Base.metadata.create_all(engine)
-  return engine
+    engine = get_engine(db_path)
+    Base.metadata.create_all(engine)
+    _apply_migrations(engine)
+    return engine
+
+
+def _column_exists(engine, table: str, column: str) -> bool:
+    with engine.connect() as conn:
+        res = conn.execute(text(f"PRAGMA table_info('{table}')"))
+        return any(row[1] == column for row in res.fetchall())
+
+
+def _add_column(engine, table: str, column_def: str):
+    with engine.connect() as conn:
+        conn.execute(text(f"ALTER TABLE {table} ADD COLUMN {column_def}"))
+        conn.commit()
+
+
+def _apply_migrations(engine):
+    # Add new columns to pricing_snapshots if missing
+    if _column_exists(engine, "pricing_snapshots", "url") is False:
+        _add_column(engine, "pricing_snapshots", "url TEXT")
+    if _column_exists(engine, "pricing_snapshots", "content_hash") is False:
+        _add_column(engine, "pricing_snapshots", "content_hash TEXT")
+    if _column_exists(engine, "pricing_snapshots", "is_change") is False:
+        _add_column(engine, "pricing_snapshots", "is_change BOOLEAN DEFAULT 0 NOT NULL")
 
 
 @contextmanager

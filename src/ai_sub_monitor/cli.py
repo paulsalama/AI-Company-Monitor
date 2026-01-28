@@ -116,7 +116,7 @@ def report_cmd(ctx: click.Context, week_start, latest: bool):
         week = date.today()
     elif week_start:
         week = week_start.date()
-    path = generate_weekly_report(week_start=week)
+    path = generate_weekly_report(week_start=week, db_path=db_path)
     console.print(f"[green]Report generated at {path}[/green]")
 
 
