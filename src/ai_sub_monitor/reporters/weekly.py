@@ -50,25 +50,29 @@ def _community_metrics(start_dt: dt.datetime, end_dt: dt.datetime, db_path) -> t
     return volume, sentiment
 
 
-def _change_counts(start_dt: dt.datetime, end_dt: dt.datetime, db_path) -> tuple[int, int]:
-    pricing_changes = 0
-    doc_changes = 0
+def _changes_with_details(start_dt: dt.datetime, end_dt: dt.datetime, db_path):
+    pricing_changes = []
+    doc_changes = []
     with session_scope(db_path) as session:
-        pricing_changes = session.scalar(
-            select(func.count()).where(
+        pricing_changes = session.execute(
+            select(PricingSnapshot.url, PricingSnapshot.captured_at)
+            .where(
                 PricingSnapshot.captured_at >= start_dt,
                 PricingSnapshot.captured_at < end_dt + dt.timedelta(days=1),
                 PricingSnapshot.is_change.is_(True),
             )
-        )
-        doc_changes = session.scalar(
-            select(func.count()).where(
+            .order_by(PricingSnapshot.captured_at.desc())
+        ).all()
+        doc_changes = session.execute(
+            select(DocumentationSnapshot.url, DocumentationSnapshot.captured_at)
+            .where(
                 DocumentationSnapshot.captured_at >= start_dt,
                 DocumentationSnapshot.captured_at < end_dt + dt.timedelta(days=1),
                 DocumentationSnapshot.is_change.is_(True),
             )
-        )
-    return int(pricing_changes or 0), int(doc_changes or 0)
+            .order_by(DocumentationSnapshot.captured_at.desc())
+        ).all()
+    return pricing_changes, doc_changes
 
 
 def generate_weekly_report(week_start: Optional[dt.date] = None, db_path=None) -> Path:
@@ -78,16 +82,23 @@ def generate_weekly_report(week_start: Optional[dt.date] = None, db_path=None) -
     end_dt = dt.datetime.combine(end, dt.time.max)
     template = env.get_template("weekly_report.md.j2")
 
-    volume, sentiment = _community_metrics(start_dt, end_dt, db_path or default_db_path())
-    pricing_changes, doc_changes = _change_counts(start_dt, end_dt, db_path or default_db_path())
+    db = db_path or default_db_path()
+    volume, sentiment = _community_metrics(start_dt, end_dt, db)
+    pricing_changes, doc_changes = _changes_with_details(start_dt, end_dt, db)
 
     context: Dict[str, Any] = {
         "week_start": start.isoformat(),
         "week_end": end.isoformat(),
         "generated_at": dt.datetime.utcnow().isoformat() + "Z",
         "summary": None,
-        "pricing_changes": pricing_changes,
-        "rate_limit_changes": doc_changes,
+        "pricing_changes": len(pricing_changes),
+        "rate_limit_changes": len(doc_changes),
+        "pricing_change_urls": [
+            {"url": url, "captured_at": captured_at.isoformat()} for url, captured_at in pricing_changes
+        ],
+        "doc_change_urls": [
+            {"url": url, "captured_at": captured_at.isoformat()} for url, captured_at in doc_changes
+        ],
         "community_signal_volume": volume if volume else {},
         "sentiment_trend": sentiment,
         "key_events": [],

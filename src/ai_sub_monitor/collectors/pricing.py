@@ -11,7 +11,7 @@ from sqlalchemy import select
 
 from ..config import ensure_data_dirs
 from ..db import PricingSnapshot, session_scope
-from ..utils.http import get_client
+from ..utils.http import fetch_with_retries, get_client
 
 console = Console()
 
@@ -46,7 +46,7 @@ def run(sources_config: Dict[str, Any]):
         for url in pricing_urls:
             console.print(f"[cyan]Fetching pricing page for {company_id}: {url}[/cyan]")
             try:
-                resp = client.get(url)
+                resp = fetch_with_retries(client, url)
                 resp.raise_for_status()
             except Exception as exc:
                 console.print(f"[red]Failed to fetch {url}: {exc}[/red]")
@@ -82,4 +82,21 @@ def run(sources_config: Dict[str, Any]):
                     is_change=prev is not None,
                 )
                 session.add(snap)
+
+                # If previous snapshot exists, write a unified diff for manual review
+                if prev:
+                    import difflib
+
+                    diff_path = snapshot_dir / f"{company_id}_pricing_{_safe_slug(url)}_{now}.diff"
+                    diff_text = "\n".join(
+                        difflib.unified_diff(
+                            (prev.raw_html or "").splitlines(),
+                            html.splitlines(),
+                            fromfile="prev",
+                            tofile="curr",
+                        )
+                    )
+                    diff_path.write_text(diff_text, encoding="utf-8")
+                    console.print(f"[green]Saved diff to {diff_path}[/green]")
+
                 console.print(f"[green]Saved snapshot to {filename}[/green]")

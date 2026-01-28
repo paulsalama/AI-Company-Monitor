@@ -6,13 +6,21 @@
  ## Executive Summary
  {{ summary or "Summary placeholder — add narrative here." }}
 
- ## Pricing & Rate Limits
- - Pricing changes detected: {{ pricing_changes }}
- - Rate limit changes detected: {{ rate_limit_changes }}
+## Pricing & Rate Limits
+- Pricing changes detected: {{ pricing_changes }}
+- Rate limit changes detected: {{ rate_limit_changes }}
+{% if pricing_change_urls %}
+**Pricing change URLs**
+{% for item in pricing_change_urls %}- {{ item.captured_at }} — {{ item.url }}
+{% endfor %}{% endif %}
+{% if doc_change_urls %}
+**Rate limit / docs change URLs**
+{% for item in doc_change_urls %}- {{ item.captured_at }} — {{ item.url }}
+{% endfor %}{% endif %}
 
- ## Community Sentiment
- - Signals collected: {{ community_signal_volume }}
- - Sentiment trend: {{ sentiment_trend }}
+## Community Sentiment
+- Signals collected: {{ community_signal_volume }}
+- Sentiment trend: {{ sentiment_trend }}
 
  ## Key Events
  {% if key_events %}{% for event in key_events %}- {{ event }}{% endfor %}{% else %}- None recorded{% endif %}

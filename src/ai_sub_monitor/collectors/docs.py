@@ -9,7 +9,7 @@ from rich.console import Console
 from sqlalchemy import select
 
 from ..db import DocumentationSnapshot, session_scope
-from ..utils.http import get_client
+from ..utils.http import fetch_with_retries, get_client
 
 console = Console()
 
@@ -30,7 +30,7 @@ def run(sources_config: Dict[str, Any]):
         for url in docs_urls:
             console.print(f"[cyan]Fetching docs for {company_id}: {url}[/cyan]")
             try:
-                resp = client.get(url)
+                resp = fetch_with_retries(client, url)
                 resp.raise_for_status()
             except Exception as exc:
                 console.print(f"[red]Failed to fetch {url}: {exc}[/red]")
@@ -58,4 +58,18 @@ def run(sources_config: Dict[str, Any]):
                     is_change=prev is not None,
                 )
                 session.add(snap)
+                if prev:
+                    import difflib
+
+                    diff_path = Path("data/snapshots") / f"{company_id}_docs_{_safe_slug(url)}_{now}.diff"
+                    diff_text = "\n".join(
+                        difflib.unified_diff(
+                            (prev.raw_html or "").splitlines(),
+                            html.splitlines(),
+                            fromfile="prev",
+                            tofile="curr",
+                        )
+                    )
+                    diff_path.write_text(diff_text, encoding="utf-8")
+                    console.print(f"[green]Saved diff to {diff_path}[/green]")
                 console.print(f"[green]Saved docs snapshot to {path}[/green]")
