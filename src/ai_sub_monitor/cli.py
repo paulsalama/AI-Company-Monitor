@@ -17,6 +17,7 @@ from .collectors import reddit as reddit_collector
 from .config import default_db_path, ensure_data_dirs, load_sources_and_keywords
 from .db import Company, FinancialEvent, init_db, session_scope
 from .reporters.weekly import generate_weekly_report
+from .utils.models import update_models
 
 console = Console()
 
@@ -118,6 +119,17 @@ def report_cmd(ctx: click.Context, week_start, latest: bool):
         week = week_start.date()
     path = generate_weekly_report(week_start=week, db_path=db_path)
     console.print(f"[green]Report generated at {path}[/green]")
+
+
+@cli.command("update-models")
+@click.pass_context
+def update_models_cmd(ctx: click.Context):
+    """Update spreadsheet copies in data/models with latest pricing."""
+    db_path: Path = ctx.obj["db_path"]
+    ensure_data_dirs()
+    init_db(db_path)
+    update_models(db_path=db_path)
+    console.print("[green]Updated spreadsheets in data/models/ (sheet: LatestPricing).[/green]")
 
 
 @cli.command("add-event")

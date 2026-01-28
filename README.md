@@ -41,6 +41,10 @@ Monitor subscription economics signals for leading AI companies (Anthropic and O
    ```sh
    ai-sub-monitor report --latest
    ```
+6. Update spreadsheet copies with latest pricing (writes sheet `LatestPricing` in `data/models/*.xlsx`):
+   ```sh
+   ai-sub-monitor update-models
+   ```
 
 Configuration lives in `config/sources.yaml` and `config/keywords.yaml`.
 

@@ -3,7 +3,7 @@ from __future__ import annotations
 import datetime as dt
 import hashlib
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any, Dict, List
 
 from bs4 import BeautifulSoup
 from rich.console import Console
@@ -20,14 +20,41 @@ def _safe_slug(url: str) -> str:
     return url.replace("https://", "").replace("http://", "").replace("/", "_")
 
 
-def _extract_structured_pricing(html: str) -> Dict[str, Any] | None:
+def _extract_structured_pricing(company_id: str, html: str) -> Dict[str, Any] | None:
     """
-    Minimal placeholder extractor. In v1 we simply return None and rely on raw_html snapshots.
-    Later we can parse tiers and prices explicitly.
+    Lightweight extractor: grabs obvious $price amounts and maps to known tiers.
+    This is heuristic but gives us structured values for workbook updates.
     """
     soup = BeautifulSoup(html, "html.parser")
+    text = soup.get_text(" ", strip=True)
+    amounts = []
+    for m in re.finditer(r"\$(\d{1,4})", text):
+        try:
+            amounts.append(int(m.group(1)))
+        except ValueError:
+            continue
+    amounts = sorted(set(amounts))
+
+    pricing: List[Dict[str, Any]] = []
+    if company_id == "anthropic":
+        mapping = {20: "pro", 100: "max_5x", 200: "max_20x"}
+        for amt in amounts:
+            if amt in mapping:
+                pricing.append({"tier": mapping[amt], "price_monthly": amt})
+    elif company_id == "openai":
+        mapping = {20: "plus", 200: "pro"}
+        for amt in amounts:
+            if amt in mapping:
+                pricing.append({"tier": mapping[amt], "price_monthly": amt})
+
+    if not pricing:
+        return None
+
     title = soup.title.string if soup.title else None
-    return {"title": title} if title else None
+    data = {"pricing": pricing}
+    if title:
+        data["title"] = title
+    return data
 
 
 def _hash(text: str) -> str:
@@ -68,7 +95,7 @@ def run(sources_config: Dict[str, Any]):
                 filename = snapshot_dir / f"{company_id}_pricing_{_safe_slug(url)}_{now}.html"
                 filename.write_text(html, encoding="utf-8")
 
-                structured = _extract_structured_pricing(html)
+                structured = _extract_structured_pricing(company_id, html)
                 snap = PricingSnapshot(
                     company_id=company_id,
                     url=url,
