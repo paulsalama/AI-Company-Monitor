@@ -22,6 +22,8 @@ __pycache__/
 data/monitor.db
 data/snapshots/
 data/reports/
+data/models/
+*.egg-info/
 
 # Editor
 *.swp

@@ -5,11 +5,11 @@ import hashlib
 from pathlib import Path
 from typing import Any, Dict
 
-import httpx
 from rich.console import Console
 from sqlalchemy import select
 
 from ..db import DocumentationSnapshot, session_scope
+from ..utils.http import get_client
 
 console = Console()
 
@@ -24,12 +24,13 @@ def _hash(text: str) -> str:
 
 def run(sources_config: Dict[str, Any]):
     now = dt.datetime.utcnow().strftime("%Y%m%dT%H%M%SZ")
+    client = get_client()
     for company_id, info in sources_config.get("companies", {}).items():
         docs_urls = info.get("docs_urls", [])
         for url in docs_urls:
             console.print(f"[cyan]Fetching docs for {company_id}: {url}[/cyan]")
             try:
-                resp = httpx.get(url, timeout=20)
+                resp = client.get(url)
                 resp.raise_for_status()
             except Exception as exc:
                 console.print(f"[red]Failed to fetch {url}: {exc}[/red]")

@@ -5,13 +5,13 @@ import hashlib
 from pathlib import Path
 from typing import Any, Dict
 
-import httpx
 from bs4 import BeautifulSoup
 from rich.console import Console
 from sqlalchemy import select
 
 from ..config import ensure_data_dirs
 from ..db import PricingSnapshot, session_scope
+from ..utils.http import get_client
 
 console = Console()
 
@@ -39,13 +39,14 @@ def run(sources_config: Dict[str, Any]):
     now = dt.datetime.utcnow().strftime("%Y%m%dT%H%M%SZ")
     snapshot_dir = Path("data/snapshots")
     snapshot_dir.mkdir(parents=True, exist_ok=True)
+    client = get_client()
 
     for company_id, info in sources_config.get("companies", {}).items():
         pricing_urls = info.get("pricing_urls", [])
         for url in pricing_urls:
             console.print(f"[cyan]Fetching pricing page for {company_id}: {url}[/cyan]")
             try:
-                resp = httpx.get(url, timeout=20)
+                resp = client.get(url)
                 resp.raise_for_status()
             except Exception as exc:
                 console.print(f"[red]Failed to fetch {url}: {exc}[/red]")
