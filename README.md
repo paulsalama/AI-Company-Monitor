@@ -22,3 +22,24 @@ Monitor subscription economics signals for leading AI companies (Anthropic and O
 - Add scripts to pull pricing/rate-limit snapshots from Anthropic/OpenAI.
 - Add Reddit/GitHub issue ingestion (e.g., via PRAW and GitHub REST API).
 - Automate weekly/monthly reporting from the collected data.
+
+## Local Setup (Python)
+1. Ensure Python 3.11+ is installed.
+2. Install dependencies in editable mode:
+   ```sh
+   pip install -e ".[dev]"
+   ```
+3. Initialize folders and database (also seeds companies from `config/sources.yaml`):
+   ```sh
+   ai-sub-monitor init
+   ```
+4. Run a collector (pricing/docs already make HTTP fetches):
+   ```sh
+   ai-sub-monitor collect --source pricing
+   ```
+5. Generate a skeleton weekly report:
+   ```sh
+   ai-sub-monitor report --latest
+   ```
+
+Configuration lives in `config/sources.yaml` and `config/keywords.yaml`. Credentials for Reddit/GitHub collectors (not yet implemented) are expected via environment variables.

@@ -1,0 +1,31 @@
+ companies:
+   anthropic:
+     name: "Anthropic"
+     pricing_urls:
+       - https://www.anthropic.com/pricing
+       - https://www.anthropic.com/api
+     docs_urls:
+       - https://docs.anthropic.com/en/api/rate-limits
+       - https://support.anthropic.com/en/articles/8324991-about-claude-s-pro-plan-usage
+     github_repos:
+       - anthropics/claude-code
+     subreddits:
+       - ClaudeAI
+       - ClaudeCode
+
+   openai:
+     name: "OpenAI"
+     pricing_urls:
+       - https://openai.com/chatgpt/pricing
+       - https://openai.com/api/pricing
+     docs_urls:
+       - https://platform.openai.com/docs/guides/rate-limits
+     github_repos:
+       - openai/openai-python
+     subreddits:
+       - ChatGPT
+       - OpenAI
+
+ general:
+   subreddits:
+     - LocalLLaMA

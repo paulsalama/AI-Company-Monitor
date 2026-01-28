@@ -16,6 +16,12 @@ __pycache__/
 .venv/
 .env
 .env.*
+.pytest_cache/
+
+# Local data/output
+data/monitor.db
+data/snapshots/
+data/reports/
 
 # Editor
 *.swp
